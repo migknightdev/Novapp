@@ -105,7 +105,7 @@ The compiler is implemented in C++20, while the runtime is written in C.
 Clone the repository:
 
 ```bash
-git clone YOUR_REPOSITORY_URL
+git clone https://github.com/migknightdev/Novapp
 cd novac
 ```
 
