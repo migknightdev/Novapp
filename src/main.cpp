@@ -1,6 +1,3 @@
-// main.cpp — novac front-end CLI (Parts 1-3): lex -> parse -> semantic analysis.
-// There is no code generation yet (Part 4): this validates a program and can
-// dump its AST, tokens, or import usage.
 #include "lexer.h"
 #include "parser.h"
 #include "ast.h"
