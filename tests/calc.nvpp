@@ -1,0 +1,3 @@
+#include <nova>
+
+pf "ola mundo este e um codigo sendo gerado e eu digo GERADO porque Não e um transpiler e a porra de uma lingugem compilada tipo c++"

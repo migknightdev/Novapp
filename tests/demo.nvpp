@@ -1,0 +1,62 @@
+#include <nova>
+
+// ===========================================================
+//  Demonstracao das novidades do Nova++ v0.5.0-beta
+// ===========================================================
+
+func media(a, b, c) {
+    soma = a + b + c
+    resultado = soma / 3
+    return resultado
+}
+
+func classificar(nota) {
+    if (nota >= 7) {
+        return "aprovado"
+    } elif (nota >= 5) {
+        return "recuperacao"
+    } else {
+        return "reprovado"
+    }
+}
+
+const TITULO = "Boletim Nova++"
+let total_alunos = 0
+
+pf TITULO
+pf "================================"
+
+alunos = ["Ana"; "Bruno"; "Carla"; "Diego"]
+
+for (aluno in alunos) {
+    n1 = random(0, 10)
+    n2 = random(0, 10)
+    n3 = random(0, 10)
+
+    media_final = media(n1, n2, n3)
+    status = classificar(media_final)
+
+    nome_formatado = aluno.upper()
+    pf nome_formatado + " -> media: " + media_final + " (" + status + ")"
+
+    total_alunos = total_alunos + 1
+}
+
+pf "--------------------------------"
+pf "Total de alunos: " + total_alunos
+
+// Testando metodos de string
+frase = "Nova++ e Rapido"
+pf frase.lower()
+
+if (frase.contains("Rapido")) {
+    pf "A frase menciona velocidade!"
+}
+
+partes = frase.split(" ")
+pf "Palavras na frase: " + partes.length
+
+// Testando I/O de arquivo
+write_file("boletim.txt", TITULO + " - processamento concluido")
+conteudo = read_file("boletim.txt")
+pf "Arquivo salvo -> " + conteudo

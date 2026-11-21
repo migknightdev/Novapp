@@ -1,0 +1,24 @@
+#include <nova>
+
+func somar(a, b) {
+    resultado = a + b
+    return resultado
+}
+
+const MAX = 10
+let contador = 0
+
+for (item in lista) {
+    pf "item: " + item
+}
+
+contador += 1
+contador++
+
+if (contador == 1) {
+    pf "um"
+} elif (contador == 2) {
+    pf "dois"
+} else {
+    pf "outro"
+}

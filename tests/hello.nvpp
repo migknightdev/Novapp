@@ -1,0 +1,5 @@
+#include <nova>
+
+pf "Ola, Nova++!"
+pf "Linguagem " + "nativa " + "sem g++"
+pf "100% compilado, acentuação ok: ç ã é"

@@ -1,0 +1,60 @@
+#include <nova>
+
+func soma(a, b) {
+    return a + b
+}
+
+func fatorial(n) {
+    if (n <= 1) {
+        return 1
+    }
+    return n * fatorial(n - 1)
+}
+
+func fib(n) {
+    if (n < 2) {
+        return n
+    }
+    return fib(n - 1) + fib(n - 2)
+}
+
+func saudar(nome) {
+    pf "ola, " + nome + "!"
+}
+
+func par(n) {
+    return n % 2 == 0
+}
+
+func maximo(a, b) {
+    if (a > b) {
+        return a
+    }
+    return b
+}
+
+func contar(ate) {
+    for (i = 1; i <= ate; i++) {
+        if (i == 4) {
+            return
+        }
+        pf "contando " + i
+    }
+}
+
+pf "soma int: " + soma(2, 3)
+pf "soma float: " + soma(1.5, 2)
+saudar("Nova")
+saudar(42)
+pf "fat(10) = " + fatorial(10)
+pf "fib(15) = " + fib(15)
+pf "par(7): " + par(7)
+pf "par(8): " + par(8)
+pf "maximo: " + maximo(3, 9)
+pf "maximo float: " + maximo(2.5, 1.0)
+contar(10)
+pf "dobro: " + dobro(21)
+
+func dobro(x) {
+    return x * 2
+}

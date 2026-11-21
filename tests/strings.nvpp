@@ -1,0 +1,46 @@
+#include <nova>
+
+nome = "Nova"
+versao = 4
+titulo = nome + "++ v" + versao
+pf titulo
+pf titulo.length
+pf titulo.upper()
+pf titulo.lower()
+pf "contem Nova? " + titulo.contains("Nova")
+pf "contem Java? " + titulo.contains("Java")
+
+msg = "ola"
+msg += ", "
+msg += nome
+msg += 1.5
+msg += true
+pf msg
+
+if (nome == "Nova") {
+    pf "igual"
+}
+if (nome != "Outro" && "abc" < "abd") {
+    pf "ordem ok"
+}
+
+cor = "verde"
+switch (cor) {
+case "azul":
+    pf "e azul"
+case "verde":
+    pf "e verde"
+default:
+    pf "outra"
+}
+
+partes = "a,b,c".split(",")
+pf partes.length
+for (p in partes) {
+    pf "parte: " + p.upper()
+}
+frase = "um dois tres"
+palavras = frase.split(" ")
+pf palavras.(2)
+pf "ultima: " + palavras.(palavras.length)
+pf to_string(42) + "!"

@@ -1,0 +1,47 @@
+#include <nova>
+
+nums = [10; 20; 30]
+pf "tamanho: " + nums.length
+pf "primeiro: " + nums.1
+pf "segundo: " + nums.(2)
+i = 3
+pf "terceiro: " + nums.(i)
+nums.add 40
+nums.add 50
+pf "agora: " + nums.length
+nums.rm 1
+pf "depois de remover o 1o: " + nums.1
+
+soma = 0
+for (n in nums) {
+    soma += n
+}
+pf "soma: " + soma
+
+frutas = ["maca"; "banana"; "cereja"]
+frutas.add "laranja"
+frutas.rm "banana"
+for (f in frutas) {
+    pf "fruta: " + f
+}
+pf frutas.(frutas.length)
+
+medidas = [1.5; 2; 3.25]
+total = 0.0
+for (m in medidas) {
+    total += m
+}
+pf "total: " + total
+
+func dobrar(lista) {
+    lista.add 99
+    return lista.length
+}
+pf "dobrar: " + dobrar(nums)
+pf "ultimo: " + nums.(nums.length)
+
+j = 1
+while (j <= frutas.length) {
+    pf j + ": " + frutas.(j)
+    j++
+}
