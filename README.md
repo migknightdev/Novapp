@@ -106,7 +106,7 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/migknightdev/Novapp
-cd novac
+cd Novapp
 ```
 
 Build the compiler:
