@@ -43,19 +43,12 @@ const char* llvm_type(const Type& t) {
 
 const char* unsupported_stmt(StmtKind k) {
     switch (k) {
-        case StmtKind::Input: case StmtKind::Sleep: case StmtKind::Exit:
-            return "input/sleep/exit (planned for 4f)";
         default:
             return "this statement";
     }
 }
 
-const char* unsupported_expr(ExprKind k) {
-    switch (k) {
-        case ExprKind::Call: return "function calls (planned for 4d)";
-        default: return "arrays, indexing and string methods (planned for 4e)";
-    }
-}
+const char* unsupported_expr(ExprKind) { return "this expression"; }
 
 bool is_builtin(const std::string& n) {
     return n == "random" || n == "read_file" || n == "write_file" || n == "to_string";
@@ -158,8 +151,7 @@ CodeGen::Value CodeGen::convert(const Value& v, const Type& target, int ln, int 
 
 CodeGen::Value CodeGen::emit_arith(TokenType op, const Value& l, const Value& r, int ln, int col) {
     if (!l.type.numeric() || !r.type.numeric()) {
-        error("Arithmetic needs numbers (found " + type_name(l.type) + " and " + type_name(r.type) +
-              "); string concatenation outside 'pf' is planned for 4e.", ln, col);
+        error("Arithmetic needs numbers (found " + type_name(l.type) + " and " + type_name(r.type) + ").", ln, col);
         return Value{};
     }
     bool is_float = l.type.kind == TypeKind::Float || r.type.kind == TypeKind::Float;
@@ -213,7 +205,7 @@ CodeGen::Value CodeGen::emit_expr(const Expr& e) {
         case ExprKind::Property: return emit_property(static_cast<const PropertyExpr&>(e));
         case ExprKind::MethodCall: return emit_method(static_cast<const MethodCallExpr&>(e));
         default:
-            error(std::string("Code generation does not support ") + unsupported_expr(e.kind) + " yet.", e.line, e.col);
+            error(std::string("The code generator does not support ") + unsupported_expr(e.kind) + ".", e.line, e.col);
             return Value{};
     }
 }
@@ -397,7 +389,7 @@ void CodeGen::emit_pf(const PfStmt& pf) {
                 break;
             }
             default:
-                error("'pf' cannot print a value of type " + type_name(v.type) + " yet.", p.expr->line, p.expr->col);
+                error("'pf' cannot print a value of type " + type_name(v.type) + ".", p.expr->line, p.expr->col);
         }
     }
 }
@@ -784,6 +776,59 @@ void CodeGen::emit_foreach(const ForeachStmt& s) {
     scopes_.pop_back();
 }
 
+// ------------------------------ input / sleep / exit (4f) ------------------------------
+
+void CodeGen::emit_input(const InputStmt& s) {
+    const VarInfo* var = find_var(s.target);
+    if (!var) { error("Internal error: '" + s.target + "' has no storage.", s.line, s.col); return; }
+    std::string ln = "i32 " + std::to_string(s.line);
+    Value v;
+    switch (var->type.kind) {
+        case TypeKind::Int: v = call_rt("nova_input_int", "i64", ln, Type(TypeKind::Int)); break;
+        case TypeKind::Float: v = call_rt("nova_input_float", "double", ln, Type(TypeKind::Float)); break;
+        case TypeKind::String: v = call_rt("nova_input_str", "ptr", "", Type(TypeKind::String)); break;
+        case TypeKind::Bool: {
+            Value r = call_rt("nova_input_bool", "i32", ln, Type());
+            std::string t = tmp();
+            line(t + " = icmp ne i32 " + r.repr + ", 0");
+            v = Value{t, Type(TypeKind::Bool), true};
+            break;
+        }
+        default:
+            error("Cannot read input into a variable of type " + type_name(var->type) + ".", s.line, s.col);
+            return;
+    }
+    emit_store(*var, v);
+}
+
+void CodeGen::emit_sleep(const SleepStmt& s) {
+    Value v = emit_expr(*s.milliseconds);
+    if (!v.valid) return;
+    std::string ms = v.repr;
+    if (v.type.kind == TypeKind::Float) {
+        ms = tmp();
+        line(ms + " = fptosi double " + v.repr + " to i64");
+    } else if (v.type.kind != TypeKind::Int) {
+        error("sleep() needs a number of milliseconds.", s.line, s.col);
+        return;
+    }
+    call_rt("nova_sleep", "void", "i64 " + ms, Type());
+}
+
+void CodeGen::emit_exit(const ExitStmt& s) {
+    std::string code = "0";
+    if (s.code) {
+        Value v = emit_expr(*s.code);
+        if (!v.valid) return;
+        if (v.type.kind != TypeKind::Int) { error("'exit' needs an integer code.", s.line, s.col); return; }
+        code = tmp();
+        line(code + " = trunc i64 " + v.repr + " to i32");
+    }
+    call_rt("nova_exit", "void", "i32 " + code, Type());
+    line("unreachable");
+    emit_label(new_label("dead")); // code after `exit` is unreachable but stays well-formed
+}
+
 // ------------------------------ functions (4d) ------------------------------
 
 CodeGen::Value CodeGen::emit_call(const CallExpr& c) {
@@ -791,9 +836,29 @@ CodeGen::Value CodeGen::emit_call(const CallExpr& c) {
         Value v = emit_expr(*c.args[0]);
         return v.valid ? to_str(v, c.line, c.col) : Value{};
     }
+    if (c.callee == "random" && c.args.size() == 2) {
+        Value a = emit_expr(*c.args[0]);
+        Value b = emit_expr(*c.args[1]);
+        if (!a.valid || !b.valid) return Value{};
+        return call_rt("nova_random", "i64", "i64 " + a.repr + ", i64 " + b.repr, Type(TypeKind::Int));
+    }
+    if (c.callee == "read_file" && c.args.size() == 1) {
+        Value p = emit_expr(*c.args[0]);
+        if (!p.valid) return Value{};
+        return call_rt("nova_read_file", "ptr", "ptr " + p.repr, Type(TypeKind::String));
+    }
+    if (c.callee == "write_file" && c.args.size() == 2) {
+        Value p = emit_expr(*c.args[0]);
+        Value t = emit_expr(*c.args[1]);
+        if (!p.valid || !t.valid) return Value{};
+        Value r = call_rt("nova_write_file", "i32", "ptr " + p.repr + ", ptr " + t.repr, Type());
+        std::string ok = tmp();
+        line(ok + " = icmp ne i32 " + r.repr + ", 0");
+        return Value{ok, Type(TypeKind::Bool), true};
+    }
     if (c.instance.empty()) {
         if (is_builtin(c.callee))
-            error("Code generation does not support the builtin '" + c.callee + "' yet (planned for 4f).", c.line, c.col);
+            error("Internal error: the builtin '" + c.callee + "' was not handled.", c.line, c.col);
         else
             error("Internal error: no typed instance for the call to '" + c.callee + "'.", c.line, c.col);
         return Value{};
@@ -892,6 +957,9 @@ void CodeGen::emit_stmt(const Stmt& stmt) {
         case StmtKind::FuncDecl:
             error("Nested function declarations are not supported; declare functions at the top level.", stmt.line, stmt.col);
             break;
+        case StmtKind::Input: emit_input(static_cast<const InputStmt&>(stmt)); break;
+        case StmtKind::Sleep: emit_sleep(static_cast<const SleepStmt&>(stmt)); break;
+        case StmtKind::Exit: emit_exit(static_cast<const ExitStmt&>(stmt)); break;
         case StmtKind::ArrayAdd: emit_array_add(static_cast<const ArrayAddStmt&>(stmt)); break;
         case StmtKind::ArrayRemove: emit_array_remove(static_cast<const ArrayRemoveStmt&>(stmt)); break;
         case StmtKind::Foreach: emit_foreach(static_cast<const ForeachStmt&>(stmt)); break;
@@ -915,7 +983,7 @@ void CodeGen::emit_stmt(const Stmt& stmt) {
             break;
         }
         default:
-            error(std::string("Code generation does not support ") + unsupported_stmt(stmt.kind) + " yet.",
+            error(std::string("The code generator does not support ") + unsupported_stmt(stmt.kind) + ".",
                   stmt.line, stmt.col);
     }
 }
@@ -945,7 +1013,7 @@ bool CodeGen::generate(const ProgramStmt& program, const SemanticAnalyzer& sema,
     if (!errors_.empty()) return false;
 
     std::string ir;
-    ir += "; Generated by novac (Part 4e) — requires LLVM >= 15\n";
+    ir += "; Generated by novac (Part 4f) — requires LLVM >= 15\n";
     ir += globals_;
     ir += "\ndeclare i32 @printf(ptr, ...)\n";
     ir += "; runtime (runtime/nova_rt.c)\n"
@@ -955,7 +1023,11 @@ bool CodeGen::generate(const ProgramStmt& program, const SemanticAnalyzer& sema,
           "declare i32 @nova_str_contains(ptr, ptr)\ndeclare ptr @nova_str_split(ptr, ptr)\ndeclare i64 @nova_str_len(ptr)\n"
           "declare ptr @nova_arr_new()\ndeclare void @nova_arr_push(ptr, i64)\ndeclare i64 @nova_arr_get(ptr, i64, i32)\n"
           "declare void @nova_arr_remove_at(ptr, i64, i32)\ndeclare void @nova_arr_remove_value(ptr, i64, i32)\n"
-          "declare i64 @nova_arr_len(ptr)\n\n";
+          "declare i64 @nova_arr_len(ptr)\n"
+          "declare void @nova_sleep(i64)\ndeclare void @nova_exit(i32)\ndeclare i64 @nova_random(i64, i64)\n"
+          "declare ptr @nova_read_file(ptr)\ndeclare i32 @nova_write_file(ptr, ptr)\n"
+          "declare ptr @nova_input_str()\ndeclare i64 @nova_input_int(i32)\ndeclare double @nova_input_float(i32)\n"
+          "declare i32 @nova_input_bool(i32)\n\n";
     ir += main_text;
     ir += functions_;
     out_ir = std::move(ir);

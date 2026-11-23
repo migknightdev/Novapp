@@ -3,9 +3,8 @@
 // A Scope is a parent-linked symbol table: declaring a name only affects the
 // current scope, but resolving a name walks up through parents (matching how
 // a variable declared outside an if/while/for block is still visible and
-// reassignable from inside it). Part 3a only populates a single global Scope
-// with function symbols; Part 3b will create nested scopes per function body
-// and reuse this same class for variables.
+// reassignable from inside it). The analyzer keeps one global Scope for function
+// symbols and creates nested Scopes (function body, block, loop) for variables.
 #pragma once
 
 #include <string>

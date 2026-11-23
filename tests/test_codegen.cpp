@@ -91,7 +91,7 @@ static bool well_formed(const std::string& ir) {
     while (std::getline(in, ln)) {
         bool is_inst = ln.rfind("  ", 0) == 0;
         if (prev_terminator && is_inst) return false;
-        prev_terminator = is_inst && (ln.rfind("  br ", 0) == 0 || ln.rfind("  ret ", 0) == 0);
+        prev_terminator = is_inst && (ln.rfind("  br ", 0) == 0 || ln.rfind("  ret ", 0) == 0 || ln.rfind("  unreachable", 0) == 0);
     }
     return true;
 }
@@ -185,11 +185,24 @@ static void test_4e() {
       CHECK(o.front_ok && !o.ok && has(o.errors[0].message, "element type"), "empty array literal needs an element type"); }
 }
 
-static void test_unsupported() {
-    { auto o = gen("x = random(1, 5)\n");
-      CHECK(o.front_ok && !o.ok && has(o.errors[0].message, "4f"), "builtins -> planned for 4f"); }
-    { auto o = gen("sleep(1)\nx = 0\ninput x\nexit 0\n");
-      CHECK(!o.ok && o.errors.size() == 3, "sleep/input/exit all reported in one pass"); }
+static void test_4f() {
+    { auto o = gen("x = random(1, 6)\n");
+      CHECK(o.ok && has(o.ir, "call i64 @nova_random(i64 1, i64 6)"), "random(lo, hi)"); }
+    { auto o = gen("write_file(\"a.txt\", \"hi\")\ns = read_file(\"a.txt\")\nok = write_file(\"b.txt\", s)\n");
+      CHECK(o.ok && has(o.ir, "call i32 @nova_write_file(ptr") && has(o.ir, "call ptr @nova_read_file(ptr") && has(o.ir, "icmp ne i32"), "file I/O"); }
+    { auto o = gen("sleep(100)\nsleep(0.5)\n");
+      CHECK(o.ok && count(o.ir, "call void @nova_sleep(i64") == 2 && has(o.ir, "fptosi double"), "sleep with int and float"); }
+    { auto o = gen("a = 0\nb = 0.0\nc = true\nd = \"\"\ninput a\ninput b\ninput c\ninput d\n");
+      CHECK(o.ok && has(o.ir, "call i64 @nova_input_int(i32 6)") && has(o.ir, "call double @nova_input_float(i32 7)") &&
+            has(o.ir, "call i32 @nova_input_bool(i32 8)") && has(o.ir, "call ptr @nova_input_str()"), "input by variable type (with line numbers)"); }
+    { auto o = gen("exit 3\npf 1\n");
+      CHECK(o.ok && has(o.ir, "call void @nova_exit(i32 %t") && has(o.ir, "unreachable") && well_formed(o.ir), "exit code; code after it stays well-formed"); }
+    { auto o = gen("exit\n");
+      CHECK(o.ok && has(o.ir, "call void @nova_exit(i32 0)"), "bare exit"); }
+    { auto o = gen("if (true) {\n  exit 1\n}\npf 2\n");
+      CHECK(o.ok && well_formed(o.ir), "exit inside a block"); }
+    { auto o = gen("l = [1]\ninput l\n");
+      CHECK(o.front_ok && !o.ok && has(o.errors[0].message, "Cannot read input"), "input into an array is an error"); }
 }
 
 int main() {
@@ -198,8 +211,8 @@ int main() {
     test_4c();
     test_4d();
     test_4e();
-    test_unsupported();
-    if (fails == 0) { std::cout << "Codegen tests (4a + 4b + 4c + 4d + 4e): all passed.\n"; return 0; }
+    test_4f();
+    if (fails == 0) { std::cout << "Codegen tests (4a + 4b + 4c + 4d + 4e + 4f): all passed.\n"; return 0; }
     std::cerr << fails << " check(s) FAILED.\n";
     return 1;
 }

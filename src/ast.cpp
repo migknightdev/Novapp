@@ -1,6 +1,5 @@
-// ast.cpp — debug/inspection printer for the AST (not used by later compiler
-// stages; exists so Parts 2-3 can be tested by eyeballing tree structure
-// before codegen (Part 4) exists).
+// ast.cpp — AST helpers: the debug printer behind `novac --ast` (not used by any
+// compiler stage) and the deep-clone functions used for generic function instances.
 #include "ast.h"
 
 #include <sstream>

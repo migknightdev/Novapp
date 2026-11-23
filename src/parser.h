@@ -1,10 +1,8 @@
-// parser.h — Part 2b of the novac project: the Parser class.
+// parser.h — Part 2: the Parser class (recursive descent over the token stream).
 //
-// This drop implements EXPRESSION parsing only (parse_expression() is the
-// public entry point used by tests). Statement-level parsing (let/const,
-// assignment, if/while/for, func, import, ...) lands in Parts 2c-2e; their
-// method declarations are stubbed here (commented) as a map of what's coming
-// so the header's shape doesn't change later, just gets filled in.
+// parse_program() parses a whole file; parse_statement() and parse_expression()
+// parse one statement / expression (used by the tests). Errors are collected in
+// errors() and the parser recovers, so several are reported in one pass.
 #pragma once
 
 #include <vector>

@@ -1,0 +1,29 @@
+#include <nova>
+
+write_file("io_test.txt", "linha de teste")
+conteudo = read_file("io_test.txt")
+pf "lido: " + conteudo
+pf "arquivo ausente: [" + read_file("nao_existe.txt") + "]"
+
+soma = 0
+for (i = 0; i < 1000; i++) {
+    d = random(1, 6)
+    if (d < 1 || d > 6) {
+        pf "random fora do intervalo: " + d
+    }
+    soma += d
+}
+pf "media plausivel: " + (soma > 2500 && soma < 4500)
+
+sleep(50)
+
+nome = ""
+idade = 0
+altura = 0.0
+input nome
+input idade
+input altura
+pf "ola " + nome + ", idade " + idade + ", altura " + altura
+pf "ano que vem: " + (idade + 1)
+exit 3
+pf "nunca aparece"

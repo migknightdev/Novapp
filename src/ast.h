@@ -168,9 +168,9 @@ enum class Mutability { Plain, Let, Const };
 
 // First occurrence of `name = value` (optionally prefixed with let/const) in
 // a scope. A later plain `name = value` for the same name is an AssignStmt,
-// not another VarDeclStmt — matching vcomp.cpp's existing declared-vars
-// tracking, which the *semantic analysis* stage (Part 3) will now enforce
-// with a real per-scope symbol table instead of a flat std::set<string>.
+// not another VarDeclStmt. Semantic analysis (Part 3b) decides which one a
+// bare assignment is, using a real per-scope symbol table, and records the
+// answer in AssignStmt::is_declaration.
 struct VarDeclStmt : Stmt {
     std::string name;
     ExprPtr value;
@@ -238,9 +238,9 @@ struct ReturnStmt : Stmt {
     ReturnStmt() : Stmt(StmtKind::Return) {}
 };
 
-// pf <expr>  — printing semantics (stream vs. concat) are a codegen decision
-// (Part 4), not a parse-time one; the parser just captures the expression,
-// operator precedence and all.
+// pf <expr>  — how the value is printed (piece by piece for a `+` chain that
+// involves a string, plain arithmetic for numbers) is decided by codegen from
+// the types semantic analysis recorded; the parser just captures the expression.
 struct PfStmt : Stmt {
     ExprPtr value;
     PfStmt() : Stmt(StmtKind::Pf) {}
@@ -306,8 +306,8 @@ struct ProgramStmt : Stmt {
 
 // ============================== Debug printing ==============================
 
-// Renders the tree as indented text, for tests and manual inspection until
-// Part 4 (codegen) exists. Not used by any later compiler stage.
+// Renders the tree as indented text for tests and inspection (`novac --ast`).
+// Not used by any compiler stage.
 std::string print_ast(const Stmt& node, int indent = 0);
 std::string print_ast(const Expr& node, int indent = 0);
 

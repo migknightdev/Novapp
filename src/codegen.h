@@ -2,13 +2,15 @@
 // Emitting IR as text keeps novac free of any LLVM library dependency; a
 // toolchain (clang) is only needed to turn the .ll into an executable.
 // Run semantic analysis first: codegen reads the types it recorded on the AST.
-//   4a pf "text"          4b variables, int/float/bool/string-literal values,
-//   arithmetic, comparisons, && || (short-circuit), pf of any of those.
-//   4c if/elif/else, while, for, switch (no fallthrough), break, continue.
-//   4e strings and arrays through the C runtime in runtime/nova_rt.c (link it with the .ll).
-//   4d functions: one specialized LLVM function per typed instance made by semantic
-//   analysis (parameters are by value), calls, return, recursion.
-// Everything else reports a clear "not supported yet (planned for 4x)" error.
+//   4a  pf "text"
+//   4b  variables, int/float/bool values, arithmetic, comparisons, && || (short-circuit)
+//   4c  if/elif/else, while, for, switch (no fallthrough), break, continue
+//   4d  functions: one specialized LLVM function per typed instance made by semantic
+//       analysis (parameters are by value), calls, return, recursion
+//   4e  strings and arrays through the C runtime in runtime/nova_rt.c
+//   4f  input / sleep / exit / random / read_file / write_file
+// Code outside the language (e.g. a nested function declaration) is reported as a
+// CODEGEN ERROR instead of producing broken IR.
 #pragma once
 
 #include <map>
@@ -29,7 +31,7 @@ struct CodegenError {
 
 class CodeGen {
 public:
-    // Returns false (see errors()) when the program uses something not supported yet.
+    // Returns false (see errors()) when the program can't be compiled.
     bool generate(const ProgramStmt& program, const SemanticAnalyzer& sema, std::string& out_ir);
     const std::vector<CodegenError>& errors() const { return errors_; }
 
@@ -101,6 +103,9 @@ private:
     void emit_array_add(const ArrayAddStmt& s);
     void emit_array_remove(const ArrayRemoveStmt& s);
     void emit_foreach(const ForeachStmt& s);
+    void emit_input(const InputStmt& s);
+    void emit_sleep(const SleepStmt& s);
+    void emit_exit(const ExitStmt& s);
     void emit_return(const ReturnStmt& r);
     void emit_function(const FuncInstance& inst);
     void reset_function_state();

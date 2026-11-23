@@ -1,24 +1,40 @@
+// main.cpp — the novac command line: lex -> parse -> semantic analysis -> LLVM IR.
+// Validates programs, dumps tokens / AST / IR, and builds or runs them with clang
+// plus the C runtime (runtime/nova_rt.c).
 #include "lexer.h"
 #include "parser.h"
 #include "ast.h"
 #include "semantic.h"
 #include "codegen.h"
 
+#include <cctype>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
+#ifdef _WIN32
+#define NOVAC_NULL_DEV "NUL"
+static const char* const EXE_EXT = ".exe";
+#else
+#include <sys/wait.h>
+#define NOVAC_NULL_DEV "/dev/null"
+static const char* const EXE_EXT = "";
+#endif
+
 using namespace novac;
 namespace fs = std::filesystem;
 
 static void print_usage(const char* prog) {
-    std::cerr << "novac (front-end: lexer + parser + semantic analysis)\n\n"
+    std::cerr << "novac - Nova++ native compiler\n\n"
               << "Usage:\n"
               << "  " << prog << " --check  <file.nvpp>   Validate: syntax + semantics (imports, scopes, types)\n"
               << "  " << prog << " --ast    <file.nvpp>   Validate, then print the AST (imports spliced in)\n"
               << "  " << prog << " --tokens <file.nvpp>   Print the raw token stream\n"
-              << "  " << prog << " --emit-ir <file.nvpp> [-o out.ll]   Validate, then emit LLVM IR (4a: pf \"text\" only)\n";
+              << "  " << prog << " --emit-ir <file.nvpp> [-o out.ll]   Validate, then emit LLVM IR\n"
+              << "  " << prog << " build <file.nvpp> [-o out] [--keep-ir]   Compile to an executable (needs clang)\n"
+              << "  " << prog << " run   <file.nvpp> [--keep-ir]            Compile, then run it\n";
 }
 
 static bool read_file(const std::string& path, std::string& out) {
@@ -143,9 +159,96 @@ static int run_emit_ir(const std::string& path, const std::string& out_path) {
     return 0;
 }
 
+// Only plain path characters are accepted for user-supplied paths: they end up inside a shell command.
+static bool is_safe_path(const std::string& p) {
+    for (unsigned char c : p) {
+        if (std::isalnum(c) || c == '_' || c == '-' || c == '.' || c == '/' || c == '\\' || c == ':') continue;
+        return false;
+    }
+    return true;
+}
+
+static fs::path find_runtime(const char* argv0) {
+    std::vector<fs::path> candidates;
+    std::error_code ec;
+    if (const char* env = std::getenv("NOVAC_RUNTIME")) candidates.push_back(env);
+    fs::path dir = fs::absolute(argv0, ec).parent_path();
+    candidates.push_back(dir / "runtime" / "nova_rt.c");
+    candidates.push_back(dir.parent_path() / "runtime" / "nova_rt.c");
+    candidates.push_back(fs::current_path(ec) / "runtime" / "nova_rt.c");
+    for (const auto& c : candidates)
+        if (fs::is_regular_file(c, ec)) return c;
+    return {};
+}
+
+static bool generate_ir(const std::string& path, std::string& ir) {
+    std::string source;
+    if (!read_file(path, source)) { std::cerr << "[ERROR] Could not open: " << path << "\n"; return false; }
+    std::unique_ptr<ProgramStmt> program;
+    SemanticAnalyzer sema;
+    if (!front_end(path, source, program, sema)) return false;
+    CodeGen gen;
+    if (!gen.generate(*program, sema, ir)) {
+        for (auto& e : gen.errors()) report("CODEGEN ERROR", e.file.empty() ? path : e.file, e.line, e.col, e.message);
+        std::cerr << gen.errors().size() << " error(s).\n";
+        return false;
+    }
+    return true;
+}
+
+static int run_build(const std::string& path, const std::string& out, bool keep_ir, bool run_after, const char* argv0) {
+    if (!is_safe_path(path) || (!out.empty() && !is_safe_path(out))) {
+        std::cerr << "[ERROR] Paths may only contain letters, digits, '.', '_', '-', '/', '\\' and ':' (no spaces).\n";
+        return 1;
+    }
+    std::string ir;
+    if (!generate_ir(path, ir)) return 1;
+
+    fs::path exe = out.empty() ? fs::path(path).replace_extension(EXE_EXT) : fs::path(out);
+    fs::path ll = fs::path(exe).replace_extension(".ll");
+    {
+        std::ofstream f(ll, std::ios::binary);
+        if (!f) { std::cerr << "[ERROR] Could not write: " << ll.string() << "\n"; return 1; }
+        f << ir;
+    }
+    fs::path rt = find_runtime(argv0);
+    if (rt.empty()) {
+        std::cerr << "[ERROR] Cannot find runtime/nova_rt.c (looked next to novac, one folder up, and in .\\runtime).\n"
+                  << "        Set the NOVAC_RUNTIME environment variable to its full path.\n";
+        return 1;
+    }
+    if (std::system("clang --version > " NOVAC_NULL_DEV " 2>&1") != 0) {
+        std::cerr << "[ERROR] clang was not found on PATH. Install it (MSYS2: pacman -S mingw-w64-ucrt-x86_64-clang, or winget install LLVM.LLVM).\n";
+        return 1;
+    }
+    std::string cmd = "clang -Wno-override-module \"" + ll.string() + "\" \"" + rt.string() + "\" -o \"" + exe.string() + "\"";
+    if (std::system(cmd.c_str()) != 0) { std::cerr << "[ERROR] clang failed to build the executable.\n"; return 1; }
+    if (!keep_ir) { std::error_code ec; fs::remove(ll, ec); }
+    std::cout << "[OK] built " << exe.string() << "\n";
+    if (!run_after) return 0;
+
+    std::error_code ec;
+    int status = std::system(("\"" + fs::absolute(exe, ec).string() + "\"").c_str());
+#ifndef _WIN32
+    if (WIFEXITED(status)) status = WEXITSTATUS(status);
+#endif
+    return status;
+}
+
 int main(int argc, char** argv) {
     if (argc < 3) { print_usage(argv[0]); return 1; }
     std::string mode = argv[1], path = argv[2];
+    if (mode == "build" || mode == "run") {
+        std::string out;
+        bool keep_ir = false;
+        for (int i = 3; i < argc; ++i) {
+            std::string a = argv[i];
+            if (a == "-o" && i + 1 < argc) out = argv[++i];
+            else if (a == "--keep-ir") keep_ir = true;
+            else { std::cerr << "[ERROR] Unknown option: " << a << "\n"; return 1; }
+        }
+        return run_build(path, out, keep_ir, mode == "run", argv[0]);
+    }
     if (mode == "--tokens") return run_tokens(path);
     if (mode == "--check") return run_check(path, false);
     if (mode == "--ast") return run_check(path, true);
