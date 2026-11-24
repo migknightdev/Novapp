@@ -38,11 +38,27 @@ build\           generated: novac.exe, test exes, .ll, program exes  -> safe to 
 clang on Windows: `pacman -S mingw-w64-ucrt-x86_64-clang` (MSYS2) or `winget install LLVM.LLVM`.
 Accents in the Windows console may need `chcp 65001` until the runtime sets the code page (4f).
 
-## What works today
+## Implemented features — current status
 
-- **Syntax + semantics (Parts 1–3):** every error reported in one pass with a source snippet; block scopes, `const`, static types, arity/return checks, `import` with tree-shaking.
-- **Codegen (4a–4c):** `pf`, variables (`let`/`const`, `+= -= *= /=`, `++ --`), `int` (64-bit) / `float` / `bool` / string literals, arithmetic, comparisons, `&&`/`||` with short-circuit, `if/elif/else`, `while`, `for`, `switch`, `break`, `continue`; **functions (4d)**: calls, `return`, recursion, functions defined after use.
-- **Strings & arrays (4e):** concatenation anywhere, comparisons, `.upper()/.lower()/.contains()/.split()`, `.length`, array literals (int/float/bool/string), `lista.(i)` / `lista.N` (1-based, bounds-checked with the line number), `.add`, `.rm`, `foreach`, string `switch`, `to_string(x)`. Needs the C runtime: `runtime\nova_rt.c` is linked with the `.ll` (`.\build.ps1 -Run` does it).
+This table is the single source of truth for features implemented in the current compiler. The roadmap below tracks development stages; this table tracks the actual language and compiler capabilities.
+
+| Area | Implemented features | Status |
+|---|---|---|
+| Lexer and parser | Tokenization, parsing, AST construction, source locations, syntax diagnostics | ✅ Implemented |
+| Semantic analysis | Block scopes, `const`, static types, function arity and return checks, imports, module resolution, tree-shaking | ✅ Implemented |
+| Variables and types | `let`, `const`, `int` (64-bit), `float`, `bool`, strings, assignments, compound assignments (`+=`, `-=`, `*=`, `/=`), increment/decrement (`++`, `--`) | ✅ Implemented |
+| Expressions | Arithmetic, typed `+`, comparisons, `&&` and `||` with short-circuit evaluation, string literals and concatenation | ✅ Implemented |
+| Control flow | `if`, `elif`, `else`, `while`, `for`, `switch`, `break`, `continue`, `foreach` | ✅ Implemented |
+| Functions | Function calls, `return`, inferred return types, generic function instantiation from argument types, self-recursion, functions defined after use | ✅ Implemented |
+| Strings | `.upper()`, `.lower()`, `.contains()`, `.split()`, `.length`, `to_string(x)`, string comparisons and string `switch` | ✅ Implemented |
+| Arrays | Array literals for `int`, `float`, `bool` and `string`; 1-based access with `lista.(i)` or `lista.N`; `.add`, `.rm`; `foreach` iteration | ✅ Implemented |
+| Input and process control | `input` for `string`, `int`, `float` and `bool`; `exit N` with an exit status | ✅ Implemented |
+| Runtime utilities | `sleep(ms)`, `random(lo, hi)`, `read_file(path)`, `write_file(path, content)` | ✅ Implemented |
+| Code generation | LLVM IR generation for the implemented language features | ✅ Implemented |
+| CLI | `--check`, `--emit-ir`, `build`, and `run` commands | ✅ Implemented |
+| Native execution | Linking generated LLVM IR with `runtime\nova_rt.c` through Clang | ✅ Implemented |
+
+The entries above describe implemented functionality, not an assertion that every edge case is supported. See **Known limitations and behavior** below for current restrictions, including empty arrays, mutual recursion, integer division by zero, and string Unicode behavior.
 
 ## Language decisions made on the way (compared with the legacy vcomp)
 

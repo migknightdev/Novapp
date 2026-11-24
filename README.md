@@ -359,6 +359,18 @@ Novapp/
 
 Generated files and executables are placed in `build/` when using the provided build script.
 
+## Known limitations
+
+The following limitations apply to the current implementation and are important when writing Nova++ programs:
+
+- **Empty array literals:** `[]` is not supported because the compiler cannot infer an element type from an empty literal.
+- **Mutual recursion:** functions can call themselves, but two or more functions cannot currently depend on each other recursively.
+- **Integer division by zero:** this is not checked by the compiler or runtime and can cause the program to crash.
+- **String length:** `.length` counts bytes, not Unicode characters. A multibyte UTF-8 character may count as more than one.
+- **String case conversion:** `.upper()` and `.lower()` support ASCII only; they do not perform Unicode-aware case conversion.
+
+These are known implementation limitations, not language guarantees. Some may change as Nova++ continues to develop. See [STATUS.md](STATUS.md) for additional implementation notes and the development roadmap.
+
 ## Current status
 
 The current codebase includes the lexer, parser and AST, semantic analysis, module loading, LLVM IR code generation, the C runtime, and the compiler CLI.
