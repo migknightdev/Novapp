@@ -1,88 +1,267 @@
-# after next update status.md will be removed
+# Nova++ Development Status
 
-important parts will be moved to the [readme](./README.md)
+**Project:** Nova++  
+**Compiler:** `novac`  
+**Version:** `0.1.0-beta`  
+**Language:** C++20 compiler with C runtime  
+**Status:** Five planned development stages completed
 
+---
 
+## 1. Overview
 
-# next update
-| item | correction |
-|---|---|
-| 1 | syntax standardization |
-| 2 | division by 0 |
-| 3 | empty arrays |
+Nova++ is a standalone programming language with its own native compiler.
 
-# novac — Nova++ native compiler
+The current compiler, `novac`, uses a custom compilation pipeline:
 
-novac is the native compiler for Nova++, implementing a complete compilation pipeline:
-`Source Code → Lexer → Parser/AST → Semantic Analysis → LLVM IR`
-It replaces the previous line-by-line text substitution architecture used by `vcomp.cpp` with a structured compiler implementation written in C++20.
-The original `vcomp.cpp` implementation belongs to the legacy repository and is not part of the current `novac` codebase.
-
-## Roadmap
-
-| Part | Status |
-|---|---|
-| 1. Lexer | ✅ |
-| 2. Parser + AST | ✅ |
-| 3. Semantic analysis (functions, scopes, types, imports) | ✅ |
-| 4. Codegen → LLVM IR | ✅ 4a ✅ `pf "text"` · 4b ✅ variables/arithmetic · 4c ✅ control flow · 4d ✅ functions · 4e ✅ strings & arrays · 4f ✅ input/sleep/exit/random/files + `build`/`run` |
-| 5. Runtime + CLI polish | ✅ |
-
-## Layout
-
+```text
+Source Code
+    |
+    v
+   Lexer
+    |
+    v
+ Parser / AST
+    |
+    v
+Semantic Analysis
+    |
+    v
+ LLVM IR Codegen
+    |
+    v
+ LLVM IR
+    |
+    v
+Clang + C Runtime
+    |
+    v
+Native Executable
 ```
-build.ps1        build / test / run helper (PowerShell)
-src\             the compiler: lexer, ast, parser, types, scope, modules, semantic, codegen, main
-tests\           test_*.cpp (unit tests) and *.nvpp fixtures (+ lib\)
-build\           generated: novac.exe, test exes, .ll, program exes  -> safe to delete anytime
+
+The project no longer follows the original line-by-line transpilation architecture. The current implementation uses lexical analysis, parsing, semantic validation, and LLVM IR generation.
+
+## 2. Implemented Components
+
+| Component | Status |
+|---|---|
+| Lexer | Completed |
+| Parser and AST | Completed |
+| Semantic analysis | Completed |
+| Type checking | Completed |
+| Variable scopes | Completed |
+| Module loading and imports | Implemented |
+| LLVM IR code generation | Implemented |
+| C runtime | Implemented |
+| Native executable generation | Implemented |
+| Compiler CLI | Implemented |
+| Runtime error handling | Implemented |
+| Automated tests | Implemented |
+| GitHub Actions CI | Implemented |
+
+## 3. Implemented Language Features
+
+### Types and variables
+
+- `int` (64-bit)
+- `float`
+- `bool`
+- Strings
+- Arrays
+- Type inference
+- `let` and `const`
+- Type-safe assignments
+
+### Operators
+
+- Arithmetic operators
+- Comparison operators
+- Logical operators
+- Compound assignments
+- Increment and decrement
+- Short-circuit evaluation for `&&` and `||`
+
+### Control flow
+
+- `if`
+- `elif`
+- `else`
+- `while`
+- C-style `for`
+- `foreach`
+- `switch`
+- `break`
+- `continue`
+
+### Functions
+
+- Function declarations
+- Parameters and return values
+- Return type inference
+- Generic specialization based on argument types
+- Self-recursion
+
+### Strings
+
+- Concatenation
+- Comparison
+- `.length`
+- `.upper()`
+- `.lower()`
+- `.contains()`
+- `.split()`
+
+### Arrays
+
+- Array literals
+- 1-based indexing
+- `.length`
+- `.add`
+- `.rm`
+- `foreach` iteration
+
+### Built-in functions
+
+- `input`
+- `sleep`
+- `exit`
+- `random`
+- `read_file`
+- `write_file`
+- `to_string`
+
+## 4. Runtime and Error Handling
+
+The C runtime provides support for operations that require runtime behavior.
+
+Integer division and modulo are checked through:
+
+```c
+int64_t nova_idiv(int64_t a, int64_t b, int32_t line);
+int64_t nova_imod(int64_t a, int64_t b, int32_t line);
 ```
 
-## Build & run (needs g++; clang only to turn IR into an exe)
+Implemented protections include:
+
+- Division by zero.
+- Modulo by zero.
+- The `INT64_MIN / -1` overflow case.
+- Runtime diagnostics containing the source line number.
+- Non-zero exit status when a runtime error occurs.
+
+The LLVM IR code generator routes integer division and modulo through these runtime functions.
+
+## 5. Compiler CLI
+
+The compiler currently supports:
+
+| Command | Purpose |
+|---|---|
+| `--help`, `-h` | Display help information |
+| `--version`, `-v` | Display compiler version |
+| `--check` | Validate source code |
+| `--tokens` | Display lexer output |
+| `--ast` | Display the generated AST |
+| `--emit-ir` | Generate LLVM IR |
+| `build` | Compile a native executable |
+| `run` | Compile and execute a program |
+
+The compiler's inspection and validation commands do not require Clang. Native builds and execution do.
+
+## 6. Testing and Continuous Integration
+
+The project includes automated tests for:
+
+- Lexer and parser behavior.
+- Semantic analysis.
+- LLVM IR code generation.
+- Complete example programs.
+
+The integration tests in `tests/test_examples.cpp` compile and execute `.nvpp` programs, checking expected output and exit status.
+
+The GitHub Actions workflow at:
+
+```text
+.github/workflows/ci.yml
+```
+
+automates compiler builds and test execution.
+
+To run the local test suite:
 
 ```powershell
-.\build\novac.exe run tests\flow.nvpp     # compile + run in one step (needs clang)
-.\build\novac.exe build tests\flow.nvpp -o flow.exe
-.\build.ps1                         # build\novac.exe
-.\build.ps1 -Test                   # + build and run the 3 test suites
-.\build.ps1 -Run tests\flow.nvpp    # .nvpp -> IR -> build\flow.exe, then runs it
-.\build\novac.exe --check tests\demo.nvpp      # validate only (syntax + semantics)
-.\build\novac.exe --emit-ir tests\hello.nvpp -o hello.ll
+.\build.ps1 -Test
 ```
-clang on Windows: `pacman -S mingw-w64-ucrt-x86_64-clang` (MSYS2) or `winget install LLVM.LLVM`.
 
-## Implemented features — current status
+To build the compiler:
 
-This table tracks the actual language and compiler capabilities.
+```powershell
+.\build.ps1
+```
 
-| Area | Implemented features | Status |
-|---|---|---|
-| Lexer and parser | Tokenization, parsing, AST construction, source locations, syntax diagnostics | ✅ Implemented |
-| Semantic analysis | Block scopes, `const`, static types, function arity and return checks, imports, module resolution, tree-shaking | ✅ Implemented |
-| Variables and types | `let`, `const`, `int` (64-bit), `float`, `bool`, strings, assignments, compound assignments (`+=`, `-=`, `*=`, `/=`), increment/decrement (`++`, `--`) | ✅ Implemented |
-| Expressions | Arithmetic, typed `+`, comparisons, `&&` and `||` with short-circuit evaluation, string literals and concatenation | ✅ Implemented |
-| Control flow | `if`, `elif`, `else`, `while`, `for`, `switch`, `break`, `continue`, `foreach` | ✅ Implemented |
-| Functions | Function calls, `return`, inferred return types, generic function instantiation from argument types, self-recursion, functions defined after use | ✅ Implemented |
-| Strings | `.upper()`, `.lower()`, `.contains()`, `.split()`, `.length`, `to_string(x)`, string comparisons and string `switch` | ✅ Implemented |
-| Arrays | Array literals for `int`, `float`, `bool` and `string`; 1-based access with `lista.(i)` or `lista.N`; `.add`, `.rm`; `foreach` iteration | ✅ Implemented |
-| Input and process control | `input` for `string`, `int`, `float` and `bool`; `exit N` with an exit status | ✅ Implemented |
-| Runtime utilities | `sleep(ms)`, `random(lo, hi)`, `read_file(path)`, `write_file(path, content)` | ✅ Implemented |
-| Code generation | LLVM IR generation for the implemented language features | ✅ Implemented |
-| CLI | `--check`, `--emit-ir`, `build`, `--tokens`, `--ast`, and `run` commands | ✅ Implemented |
-| Native execution | Linking generated LLVM IR with `runtime\nova_rt.c` through Clang | ✅ Implemented |
+## 7. Known Limitations
 
-The entries above describe implemented functionality, not an assertion that every edge case is supported. See **Known limitations and behavior** below for current restrictions, including empty arrays, mutual recursion, integer division by zero, and string Unicode behavior.
+The following features are not currently supported or have implementation restrictions:
 
-## Language decisions made on the way (compared with the legacy vcomp)
+- Empty array literals (`[]`) cannot infer their element type.
+- Mutual recursion is not supported.
+- Nested function declarations are not supported.
+- String `.length` counts bytes rather than Unicode characters.
+- `.upper()` and `.lower()` only support ASCII.
+- Some CLI build and run operations do not support paths containing spaces or shell-special characters.
 
-- Typed `+`: `pf 1 + 2` prints `3`; it concatenates only when a string is involved (`pf "a" + 1 + 2` → `a12`).
-- `pf` prints bools as `true`/`false`; floats like C++ streams (`4.5`, `3`, `1e+06`).
-- `switch` has **no fallthrough**: each case runs alone (a `break` inside is still allowed); `default` runs when nothing matched.
-- Blocks have their own scope: a variable first assigned inside a block does not exist after it; `let` inside a block shadows.
-- Stricter checks: `x = 5` then `x = 2.5` is an error; `return` types must agree; functions can't see caller variables.
-- **Functions are generic by instantiation.** Parameters are untyped, so each distinct list of argument types gets its own typed copy: `soma(2, 3)` and `soma(1.5, 2)` are `soma(int,int)` and `soma(float,int)` (LLVM symbols `@"soma(int,int)"`). Semantic analysis type-checks each instance (errors point at the line inside the function); only instances actually called are emitted. Parameters are passed **by value** (vcomp's C++ `auto&&` could modify the caller's variable).
-- Return type is inferred from the `return` statements and must agree; a function with no `return <value>` is void. **Self-recursion** works (return type found from the non-recursive returns); **mutual recursion** is a clear error for now. Functions can't be declared inside other functions.
-- Integer division by zero is not checked yet (crashes at runtime).
+These limitations do not invalidate the implemented compiler pipeline or the existing language features.
 
-## Part 5 is complete
+## 8. Development History
 
-CLI and compiler polish completed. No further roadmap stages are planned.
+### Original compiler
+
+The original implementation used a simpler transpilation approach based on text replacement.
+
+That implementation is now maintained separately in the archived legacy repository:
+
+https://github.com/migknightdev/novapp-old
+
+### Current compiler: `novac`
+
+The current implementation introduced:
+
+- A custom lexer.
+- A parser and AST.
+- Semantic analysis.
+- Module loading.
+- LLVM IR code generation.
+- A C runtime.
+- Native executable compilation.
+
+### Part 5
+
+The fifth development stage introduced:
+
+- Checked integer division.
+- Checked integer modulo.
+- Runtime diagnostics for arithmetic errors.
+- Integration tests for complete `.nvpp` programs.
+- GitHub Actions CI.
+- CLI help and version options.
+- Documentation updates.
+
+## 9. Current Development Status
+
+The five planned compiler development stages have been completed.
+
+The current project is focused on maintaining and improving the existing compiler and language implementation rather than following another predefined development stage.
+
+Potential future improvements include:
+
+- Empty array type inference.
+- Mutual recursion.
+- More complete Unicode string support.
+- Additional runtime and integration tests.
+- Further syntax and language consistency improvements.
+
+---
+
+**Last updated:** November 2026  
+**Project:** Nova++  
+**Repository:** https://github.com/migknightdev/Novapp

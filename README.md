@@ -28,10 +28,12 @@ The compiler is written in **C++20**. The language runtime is written in **C**, 
 - **LLVM IR code generation:** emits textual LLVM IR without requiring LLVM development libraries to build the compiler itself.
 - **Diagnostics:** reports lexical, syntax, semantic, and code-generation errors with file, line, column, and source snippets.
 - **Inspection modes:** token stream, AST, semantic validation, and LLVM IR output.
+- **Runtime error handling:** checked integer division and modulo operations, including division-by-zero and overflow cases.
+- **CLI utilities:** help information and compiler version reporting.
 
 ### Language
 
-- **Types:** `int`, `float`, `bool`, strings, and arrays.
+- **Types:** 64-bit `int`, `float`, `bool`, strings, and arrays.
 - **Variables:** inferred declarations, `let`, and `const`.
 - **Operators:** arithmetic, comparisons, logical operators, compound assignments, and increment/decrement.
 - **Control flow:** `if`, `elif`, `else`, `while`, C-style `for`, `foreach`, and `switch`.
@@ -221,13 +223,24 @@ Native executable
 
 The compiler emits LLVM IR as text. Clang links that IR with the Nova++ C runtime to produce the executable.
 
+## Runtime error handling
+
+Integer division and modulo operations are checked at runtime.
+
+The runtime provides two functions:
+
+- `nova_idiv()` handles integer division.
+- `nova_imod()` handles integer modulo.
+
+Both functions handle division by zero and the `INT64_MIN / -1` overflow case. Runtime errors include the corresponding source line number.
+
 ## Requirements
 
 - **G++** with C++20 support.
 - **Clang** available on `PATH` to build native executables.
 - **PowerShell** to use the included `build.ps1` helper script.
 
-The compiler's `--check`, `--tokens`, `--ast`, and `--emit-ir` modes do not need Clang. The `build` and `run` commands do.
+The compiler's `--check`, `--tokens`, `--ast`, `--emit-ir`, `--help`, and `--version` modes do not need Clang. The `build` and `run` commands do.
 
 ### Installing the toolchain on Windows
 
@@ -274,6 +287,8 @@ build/novac.exe
 
 This builds and runs the parser, semantic analysis, and code-generation test suites.
 
+The project also includes integration tests that compile and execute complete `.nvpp` examples, checking their expected output and exit codes.
+
 ### Compile and run a program with the helper script
 
 ```powershell
@@ -281,6 +296,18 @@ This builds and runs the parser, semantic analysis, and code-generation test sui
 ```
 
 ### Use the compiler directly
+
+Display compiler help:
+
+```powershell
+.\build\novac.exe --help
+```
+
+Display the compiler version:
+
+```powershell
+.\build\novac.exe --version
+```
 
 Validate syntax and semantics:
 
@@ -328,10 +355,27 @@ The `build` and `run` commands locate `runtime/nova_rt.c` next to the compiler, 
 
 **Path limitation:** the current CLI rejects paths containing spaces or shell-special characters for build and run operations.
 
+## Continuous integration
+
+Nova++ uses GitHub Actions for automated checks.
+
+The workflow at `.github/workflows/ci.yml` automates:
+
+- Building the `novac` compiler.
+- Running parser tests.
+- Running semantic analysis tests.
+- Running code-generation tests.
+- Running integration tests with complete Nova++ examples.
+
+This helps detect regressions when changes are pushed to the repository.
+
 ## Project structure
 
 ```text
 Novapp/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── src/
 │   ├── lexer.cpp / lexer.h
 │   ├── ast.cpp / ast.h
@@ -350,6 +394,7 @@ Novapp/
 │   ├── test_parser.cpp
 │   ├── test_semantic.cpp
 │   ├── test_codegen.cpp
+│   ├── test_examples.cpp
 │   └── *.nvpp
 ├── build.ps1
 ├── LICENSE
@@ -360,11 +405,10 @@ Generated files and executables are placed in `build/` when using the provided b
 
 ## Known limitations
 
-The following limitations apply to the current implementation and are important when writing Nova++ programs:
+The following limitations apply to the current implementation:
 
 - **Empty array literals:** `[]` is not supported because the compiler cannot infer an element type from an empty literal.
 - **Mutual recursion:** functions can call themselves, but two or more functions cannot currently depend on each other recursively.
-- **Integer division by zero:** this is not checked by the compiler or runtime and can cause the program to crash.
 - **String length:** `.length` counts bytes, not Unicode characters. A multibyte UTF-8 character may count as more than one.
 - **String case conversion:** `.upper()` and `.lower()` support ASCII only; they do not perform Unicode-aware case conversion.
 
@@ -377,19 +421,13 @@ The current codebase includes:
 - Lexer and parser with AST generation.
 - Semantic analysis and module loading.
 - LLVM IR code generation.
-- C runtime.
-- Compiler CLI with validation, token and AST inspection, IR emission, native builds, and execution.
+- C runtime with checked integer division and modulo operations.
+- Compiler CLI with validation, token and AST inspection, IR emission, native builds, execution, help, and version reporting.
+- Automated parser, semantic, code-generation, and integration tests.
+- GitHub Actions continuous integration.
 - Language features including variables, functions, control flow, strings, arrays, console input, timing, process exit, random numbers, and file operations.
 
-### Next update
-
-The next update is planned to address three remaining areas:
-
-- Syntax standardization.
-- Division-by-zero handling.
-- Empty array support.
-
-No additional roadmap stages are currently planned.
+The five planned compiler development stages have been completed. No additional roadmap stages are currently planned.
 
 ## License
 
