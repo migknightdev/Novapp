@@ -158,6 +158,12 @@ CodeGen::Value CodeGen::emit_arith(TokenType op, const Value& l, const Value& r,
     Value a = l, b = r;
     if (is_float) { a = to_double(l); b = to_double(r); }
 
+    if (!is_float && (op == TokenType::SLASH || op == TokenType::PERCENT)) {
+        // integer / and % are checked at run time (division by zero is an error with the line number)
+        return call_rt(op == TokenType::SLASH ? "nova_idiv" : "nova_imod", "i64",
+                       "i64 " + a.repr + ", i64 " + b.repr + ", i32 " + std::to_string(ln), Type(TypeKind::Int));
+    }
+
     const char* inst = nullptr;
     switch (op) {
         case TokenType::PLUS: inst = is_float ? "fadd" : "add"; break;
@@ -1027,7 +1033,8 @@ bool CodeGen::generate(const ProgramStmt& program, const SemanticAnalyzer& sema,
           "declare void @nova_sleep(i64)\ndeclare void @nova_exit(i32)\ndeclare i64 @nova_random(i64, i64)\n"
           "declare ptr @nova_read_file(ptr)\ndeclare i32 @nova_write_file(ptr, ptr)\n"
           "declare ptr @nova_input_str()\ndeclare i64 @nova_input_int(i32)\ndeclare double @nova_input_float(i32)\n"
-          "declare i32 @nova_input_bool(i32)\n\n";
+          "declare i32 @nova_input_bool(i32)\n"
+          "declare i64 @nova_idiv(i64, i64, i32)\ndeclare i64 @nova_imod(i64, i64, i32)\n\n";
     ir += main_text;
     ir += functions_;
     out_ir = std::move(ir);

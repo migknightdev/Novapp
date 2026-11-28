@@ -1,0 +1,20 @@
+medio
+impar: 1
+impar: 3
+impar: 5
+j=1
+j=2
+j=3
+total: 5050
+1x1=1
+2x1=2
+2x2=4
+3x1=3
+3x2=6
+3x3=9
+quarta
+segunda
+outro
+collatz(100) passos: 25
+interno: 2
+externo: 1

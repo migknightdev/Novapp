@@ -1,0 +1,4 @@
+#include <nova>
+x = 0
+input x
+pf x

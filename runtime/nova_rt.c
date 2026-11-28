@@ -278,3 +278,17 @@ int32_t nova_input_bool(int32_t line) {
     fail(line, "invalid bool input (use true/false)");
     return 0;
 }
+
+/* ---------- checked integer division (the language's / and % on ints) ---------- */
+
+int64_t nova_idiv(int64_t a, int64_t b, int32_t line) {
+    if (b == 0) fail(line, "division by zero");
+    if (b == -1) return (int64_t)(0 - (uint64_t)a); /* avoids the INT64_MIN / -1 trap */
+    return a / b;
+}
+
+int64_t nova_imod(int64_t a, int64_t b, int32_t line) {
+    if (b == 0) fail(line, "modulo by zero");
+    if (b == -1) return 0;
+    return a % b;
+}

@@ -23,9 +23,11 @@ if ($Test) {
     Run-Step "build test_parser"   { g++ -std=c++20 -Isrc @front tests\test_parser.cpp -o build\test_parser.exe }
     Run-Step "build test_semantic" { g++ -std=c++20 -Isrc @sema  tests\test_semantic.cpp -o build\test_semantic.exe }
     Run-Step "build test_codegen"  { g++ -std=c++20 -Isrc @full  tests\test_codegen.cpp -o build\test_codegen.exe }
+    Run-Step "build test_examples" { g++ -std=c++20 tests\test_examples.cpp -o build\test_examples.exe }
     Run-Step "test_parser"   { .\build\test_parser.exe }
     Run-Step "test_semantic" { .\build\test_semantic.exe }
     Run-Step "test_codegen"  { .\build\test_codegen.exe }
+    Run-Step "test_examples" { .\build\test_examples.exe }
 }
 
 if ($Run) {

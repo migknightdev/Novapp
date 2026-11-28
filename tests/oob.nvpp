@@ -1,0 +1,5 @@
+#include <nova>
+l = [1; 2]
+pf "antes"
+pf l.(5)
+pf "depois"

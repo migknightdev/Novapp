@@ -24,17 +24,20 @@ static const char* const EXE_EXT = "";
 #endif
 
 using namespace novac;
+
+#define NOVAC_VERSION "0.1.0-beta"
 namespace fs = std::filesystem;
 
-static void print_usage(const char* prog) {
-    std::cerr << "novac - Nova++ native compiler\n\n"
+static void print_usage(const char* prog, std::ostream& os = std::cerr) {
+    os << "novac - Nova++ native compiler\n\n"
               << "Usage:\n"
               << "  " << prog << " --check  <file.nvpp>   Validate: syntax + semantics (imports, scopes, types)\n"
               << "  " << prog << " --ast    <file.nvpp>   Validate, then print the AST (imports spliced in)\n"
               << "  " << prog << " --tokens <file.nvpp>   Print the raw token stream\n"
               << "  " << prog << " --emit-ir <file.nvpp> [-o out.ll]   Validate, then emit LLVM IR\n"
               << "  " << prog << " build <file.nvpp> [-o out] [--keep-ir]   Compile to an executable (needs clang)\n"
-              << "  " << prog << " run   <file.nvpp> [--keep-ir]            Compile, then run it\n";
+              << "  " << prog << " run   <file.nvpp> [--keep-ir]            Compile, then run it\n"
+       << "  " << prog << " --version | --help\n";
 }
 
 static bool read_file(const std::string& path, std::string& out) {
@@ -236,6 +239,11 @@ static int run_build(const std::string& path, const std::string& out, bool keep_
 }
 
 int main(int argc, char** argv) {
+    if (argc == 2) {
+        std::string a = argv[1];
+        if (a == "--version" || a == "-v") { std::cout << "novac " NOVAC_VERSION "\n"; return 0; }
+        if (a == "--help" || a == "-h") { print_usage(argv[0], std::cout); return 0; }
+    }
     if (argc < 3) { print_usage(argv[0]); return 1; }
     std::string mode = argv[1], path = argv[2];
     if (mode == "build" || mode == "run") {

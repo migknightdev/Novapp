@@ -66,10 +66,10 @@ static void test_4b() {
     { auto o = gen("f = 1.5\npf f > 1\n");
       CHECK(o.ok && has(o.ir, "fcmp ogt double"), "float comparison"); }
     { auto o = gen("a = 1\nb = 0\npf b != 0 && a / b > 1\n");
-      size_t rhs = o.ir.find("logic.rhs.0:"), div = o.ir.find("sdiv");
+      size_t rhs = o.ir.find("logic.rhs.0:"), div = o.ir.find("call i64 @nova_idiv");
       CHECK(o.ok && has(o.ir, "phi i1") && rhs != std::string::npos && div > rhs, "&& short-circuits: sdiv only in the rhs block"); }
     { auto o = gen("x = 1\nx += 2\nx++\nx -= 1\nx *= 3\nx /= 2\nx--\n");
-      CHECK(o.ok && count(o.ir, "add i64") == 2 && has(o.ir, "sub i64") && has(o.ir, "mul i64") && has(o.ir, "sdiv i64"),
+      CHECK(o.ok && count(o.ir, "add i64") == 2 && has(o.ir, "sub i64") && has(o.ir, "mul i64") && has(o.ir, "call i64 @nova_idiv(i64"),
             "compound assignment and ++/--"); }
     { auto o = gen("f = 1.5\nf += 2\nf++\n");
       CHECK(o.ok && has(o.ir, "fadd double") && has(o.ir, "store double"), "float compound/incdec stay double"); }
@@ -80,7 +80,7 @@ static void test_4b() {
     { auto o = gen("pf -5\nx = 2.5\npf -x\n");
       CHECK(o.ok && has(o.ir, "sub i64 0, 5") && has(o.ir, "fneg double"), "unary minus"); }
     { auto o = gen("pf 7 % 2\n");
-      CHECK(o.ok && has(o.ir, "srem i64 7, 2"), "modulo"); }
+      CHECK(o.ok && has(o.ir, "call i64 @nova_imod(i64 7, i64 2, i32 "), "modulo"); }
 }
 
 // Every `br`/`ret` must be the last instruction of its block (next line is a label or `}`).
@@ -205,6 +205,14 @@ static void test_4f() {
       CHECK(o.front_ok && !o.ok && has(o.errors[0].message, "Cannot read input"), "input into an array is an error"); }
 }
 
+static void test_5() {
+    { auto o = gen("a = 7\nb = 0\npf a / b\npf a % b\n");
+      CHECK(o.ok && has(o.ir, "call i64 @nova_idiv(i64") && has(o.ir, "call i64 @nova_imod(i64") && !has(o.ir, "sdiv") && !has(o.ir, "srem"),
+            "integer / and % go through the checked runtime helpers"); }
+    { auto o = gen("pf 7.0 / 2\n");
+      CHECK(o.ok && has(o.ir, "fdiv double"), "float division stays inline"); }
+}
+
 int main() {
     test_4a();
     test_4b();
@@ -212,7 +220,8 @@ int main() {
     test_4d();
     test_4e();
     test_4f();
-    if (fails == 0) { std::cout << "Codegen tests (4a + 4b + 4c + 4d + 4e + 4f): all passed.\n"; return 0; }
+    test_5();
+    if (fails == 0) { std::cout << "Codegen tests (4a-4f + 5): all passed.\n"; return 0; }
     std::cerr << fails << " check(s) FAILED.\n";
     return 1;
 }
