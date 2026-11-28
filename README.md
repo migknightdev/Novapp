@@ -194,29 +194,29 @@ pf value
 
 ```text
 Nova++ source (.nvpp)
-        |
-        v
-      Lexer
-        |
-        v
-  Parser and AST
-        |
-        v
- Semantic analysis
-        |
-        v
-  LLVM IR codegen
-        |
-        v
-   LLVM IR (.ll)
-        |
-        +------ runtime/nova_rt.c
-        |
-        v
-      Clang
-        |
-        v
- Native executable
+       |
+       v
+     Lexer
+       |
+       v
+ Parser and AST
+       |
+       v
+Semantic analysis
+       |
+       v
+ LLVM IR codegen
+       |
+       v
+  LLVM IR (.ll)
+       |
+       +------ runtime/nova_rt.c
+       |
+       v
+     Clang
+       |
+       v
+Native executable
 ```
 
 The compiler emits LLVM IR as text. Clang links that IR with the Nova++ C runtime to produce the executable.
@@ -352,7 +352,6 @@ Novapp/
 │   ├── test_codegen.cpp
 │   └── *.nvpp
 ├── build.ps1
-├── STATUS.md
 ├── LICENSE
 └── README.md
 ```
@@ -369,15 +368,28 @@ The following limitations apply to the current implementation and are important 
 - **String length:** `.length` counts bytes, not Unicode characters. A multibyte UTF-8 character may count as more than one.
 - **String case conversion:** `.upper()` and `.lower()` support ASCII only; they do not perform Unicode-aware case conversion.
 
-These are known implementation limitations, not language guarantees. Some may change as Nova++ continues to develop. See [STATUS.md](STATUS.md) for additional implementation notes and the development roadmap.
+These are implementation limitations and may change as Nova++ continues to develop.
 
-## Current status
+## Development status
 
-The current codebase includes the lexer, parser and AST, semantic analysis, module loading, LLVM IR code generation, the C runtime, and the compiler CLI.
+The current codebase includes:
 
-The implemented language and runtime features include control flow, functions, strings, arrays, console input, timing, process exit, random numbers, and file operations. The CLI supports validation, token and AST inspection, IR emission, native builds, and execution.
+- Lexer and parser with AST generation.
+- Semantic analysis and module loading.
+- LLVM IR code generation.
+- C runtime.
+- Compiler CLI with validation, token and AST inspection, IR emission, native builds, and execution.
+- Language features including variables, functions, control flow, strings, arrays, console input, timing, process exit, random numbers, and file operations.
 
-Nova++ is still under active development. For the detailed implementation status, known limitations, and roadmap, see [STATUS.md](STATUS.md).
+### Next update
+
+The next update is planned to address three remaining areas:
+
+- Syntax standardization.
+- Division-by-zero handling.
+- Empty array support.
+
+No additional roadmap stages are currently planned.
 
 ## License
 

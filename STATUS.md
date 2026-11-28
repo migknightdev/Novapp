@@ -1,3 +1,16 @@
+# after next update status.md will be removed
+
+important parts will be moved to the [readme](./README.md)
+
+
+
+# next update
+| item | correction |
+|---|---|
+| 1 | syntax standardization |
+| 2 | division by 0 |
+| 3 | empty arrays |
+
 # novac — Nova++ native compiler
 
 novac is the native compiler for Nova++, implementing a complete compilation pipeline:
@@ -13,7 +26,7 @@ The original `vcomp.cpp` implementation belongs to the legacy repository and is 
 | 2. Parser + AST | ✅ |
 | 3. Semantic analysis (functions, scopes, types, imports) | ✅ |
 | 4. Codegen → LLVM IR | ✅ 4a ✅ `pf "text"` · 4b ✅ variables/arithmetic · 4c ✅ control flow · 4d ✅ functions · 4e ✅ strings & arrays · 4f ✅ input/sleep/exit/random/files + `build`/`run` |
-| 5. Runtime + CLI polish | ⬜ |
+| 5. Runtime + CLI polish | ✅ |
 
 ## Layout
 
@@ -36,11 +49,10 @@ build\           generated: novac.exe, test exes, .ll, program exes  -> safe to 
 .\build\novac.exe --emit-ir tests\hello.nvpp -o hello.ll
 ```
 clang on Windows: `pacman -S mingw-w64-ucrt-x86_64-clang` (MSYS2) or `winget install LLVM.LLVM`.
-Accents in the Windows console may need `chcp 65001` until the runtime sets the code page (4f).
 
 ## Implemented features — current status
 
-This table is the single source of truth for features implemented in the current compiler. The roadmap below tracks development stages; this table tracks the actual language and compiler capabilities.
+This table tracks the actual language and compiler capabilities.
 
 | Area | Implemented features | Status |
 |---|---|---|
@@ -55,7 +67,7 @@ This table is the single source of truth for features implemented in the current
 | Input and process control | `input` for `string`, `int`, `float` and `bool`; `exit N` with an exit status | ✅ Implemented |
 | Runtime utilities | `sleep(ms)`, `random(lo, hi)`, `read_file(path)`, `write_file(path, content)` | ✅ Implemented |
 | Code generation | LLVM IR generation for the implemented language features | ✅ Implemented |
-| CLI | `--check`, `--emit-ir`, `build`, and `run` commands | ✅ Implemented |
+| CLI | `--check`, `--emit-ir`, `build`, `--tokens`, `--ast`, and `run` commands | ✅ Implemented |
 | Native execution | Linking generated LLVM IR with `runtime\nova_rt.c` through Clang | ✅ Implemented |
 
 The entries above describe implemented functionality, not an assertion that every edge case is supported. See **Known limitations and behavior** below for current restrictions, including empty arrays, mutual recursion, integer division by zero, and string Unicode behavior.
@@ -71,21 +83,6 @@ The entries above describe implemented functionality, not an assertion that ever
 - Return type is inferred from the `return` statements and must agree; a function with no `return <value>` is void. **Self-recursion** works (return type found from the non-recursive returns); **mutual recursion** is a clear error for now. Functions can't be declared inside other functions.
 - Integer division by zero is not checked yet (crashes at runtime).
 
-## Part 4 is complete
+## Part 5 is complete
 
-Every statement and expression of the language now compiles. Next: Part 5 (polish: compound features, diagnostics, packaging).
-
-## Part 4e notes
-
-- Runtime in C (`runtime/nova_rt.c`); arrays are heap handles with 8-byte slots, so passing an array to a function **shares** it (a function can `.add` to the caller's array, like vcomp). Strings are immutable; memory is never freed (the OS reclaims it at exit).
-- `.rm`: an **int argument removes by position** (1-based); any other value removes the first equal element. Out-of-range index = runtime error with the line number, exit status 1.
-- `.length` on a string counts bytes; `.upper()/.lower()` are ASCII only. Empty array literals (`[]`) are not supported yet (element type unknown).
-- Manual link: `clang -Wno-override-module program.ll runtime/nova_rt.c -o program`.
-
-## Part 4f notes
-
-- `novac run <file>` / `novac build <file> [-o out] [--keep-ir]`: emits IR, calls `clang` with `runtime\nova_rt.c`, runs it. The runtime is found next to `novac.exe`, one folder up (`build\` -> `runtime\`), or via `NOVAC_RUNTIME`. Paths may not contain spaces/shell characters.
-- `input x` reads **one line**: a `string` variable gets the whole line, `int`/`float`/`bool` variables parse it (invalid input = runtime error with the line number, exit status 1). (vcomp used `cin >>`, i.e. one word.)
-- `exit N` exits immediately with status N. Unlike vcomp, programs no longer wait for ENTER at the end or on `exit`.
-- `random(lo, hi)` is inclusive (xorshift, seeded from the clock). `read_file` gives `""` when the file can't be opened; `write_file` returns `true`/`false`. `sleep(ms)` accepts int or float.
-- On Windows the runtime switches the console to UTF-8 at startup, so accents print correctly (no more `chcp 65001`).
+CLI and compiler polish completed. No further roadmap stages are planned.

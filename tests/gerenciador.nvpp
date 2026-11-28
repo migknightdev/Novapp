@@ -1,0 +1,52 @@
+
+#include <nova>
+
+func show_tasks(tasks) {
+    pf "\n===== TASK LIST ====="
+
+    if (tasks.length == 0) {
+        pf "No tasks yet."
+    } else {
+        for (task in tasks) {
+            pf "- " + task
+        }
+    }
+}
+
+func ini() {
+    tasks = ["Study Nova++"; "Build a compiler"; "Fix bugs"]
+    option = 0
+    task = ""
+
+    while (option != 4) {
+        pf "\n===== NOVA++ TASK MANAGER ====="
+        pf "1. Add task"
+        pf "2. Show tasks"
+        pf "3. Remove task"
+        pf "4. Exit"
+        pf "Choose an option:"
+
+        input option
+
+        switch (option) {
+            case 1:
+                pf "Enter task name:"
+                input task
+                tasks.add task
+                pf "Task added!"
+            case 2:
+                show_tasks(tasks)
+            case 3:
+                pf "Enter task position:"
+                input option
+                tasks.rm option
+                pf "Task removed!"
+            case 4:
+                pf "Goodbye!"
+            default:
+                pf "Invalid option."
+        }
+    }
+}
+
+ini()
